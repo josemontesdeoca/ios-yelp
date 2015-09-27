@@ -6,7 +6,8 @@
 //  Copyright © 2015 JoseOnline. All rights reserved.
 //
 
-class BusinessesViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, FiltersViewControllerDelegate {
+class BusinessesViewController: UIViewController, UITableViewDelegate, UITableViewDataSource,
+    UISearchBarDelegate, FiltersViewControllerDelegate {
 
     @IBOutlet weak var tableView: UITableView!
     
@@ -15,30 +16,21 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        // create the search bar programatically since you won't be able to drag one onto 
+        // the navigation bar
+        let searchBar = UISearchBar()
+        searchBar.delegate = self
+        searchBar.sizeToFit()
+        searchBar.placeholder = "Restaurants"
+        
+        navigationItem.titleView = searchBar
+        
         tableView.delegate = self
         tableView.dataSource = self
         tableView.rowHeight = UITableViewAutomaticDimension
         tableView.estimatedRowHeight = 120
         
-        //        Business.searchWithTerm("Thai", completion: { (businesses: [Business]!, error: NSError!) -> Void in
-        //            self.businesses = businesses
-        //
-        //            for business in businesses {
-        //                println(business.name!)
-        //                println(business.address!)
-        //            }
-        //        })
-        
-        Business.searchWithTerm("Restaurants", sort: .Distance, categories: ["asianfusion", "burgers"], deals: true) { (businesses: [Business]!, error: NSError!) -> Void in
-            self.businesses = businesses
-            self.tableView.reloadData()
-            
-            for business in businesses {
-                print(business.name!)
-                print(business.address!)
-                print(business.imageURL!)
-            }
-        }
+        loadBusinesses("Restaurants")
     }
     
     override func didReceiveMemoryWarning() {
@@ -54,12 +46,21 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
         }
     }
     
-    func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
+    func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) ->
+        UITableViewCell {
         let cell = tableView.dequeueReusableCellWithIdentifier("BusinessCell", forIndexPath: indexPath) as! BusinessCell
         
         cell.business = businesses[indexPath.row]
         
         return cell
+    }
+    
+    func searchBarSearchButtonClicked(searchBar: UISearchBar) {
+        let searchText = searchBar.text!
+        
+        loadBusinesses(searchText)
+        
+        searchBar.endEditing(true)
     }
     
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
@@ -76,9 +77,34 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
     func filtersViewController(filtersViewController: FiltersViewController, didUpdateFilters filters: [String : AnyObject]) {
         let categories = filters["categories"] as? [String]
         
-        Business.searchWithTerm("Restaurants", sort: nil, categories: categories, deals: nil) { (businesses: [Business]!, error: NSError!) -> Void in
+        loadBusinesses("Restaurants", categories: categories)
+    }
+    
+    func loadBusinesses(searchTerm: String) {
+        // Display a loading state
+        MBProgressHUD.showHUDAddedTo(self.view, animated: true)
+        
+        Business.searchWithTerm(searchTerm, sort: .Distance, categories: nil, deals: nil) {
+            (businesses: [Business]!, error: NSError!) -> Void in
             self.businesses = businesses
             self.tableView.reloadData()
+            
+            // Remove loading state
+            MBProgressHUD.hideHUDForView(self.view, animated: true)
+        }
+    }
+    
+    func loadBusinesses(searchTerm: String, categories: [String]?) {
+        // Display a loading state
+        MBProgressHUD.showHUDAddedTo(self.view, animated: true)
+        
+        Business.searchWithTerm(searchTerm, sort: .Distance, categories: categories, deals: nil) {
+            (businesses: [Business]!, error: NSError!) -> Void in
+            self.businesses = businesses
+            self.tableView.reloadData()
+            
+            // Remove loading state
+            MBProgressHUD.hideHUDForView(self.view, animated: true)
         }
     }
     
