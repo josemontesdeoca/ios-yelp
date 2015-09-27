@@ -75,16 +75,14 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
     }
     
     func filtersViewController(filtersViewController: FiltersViewController, didUpdateFilters filters: [String : AnyObject]) {
-        let categories = filters["categories"] as? [String]
-        
-        loadBusinesses("Restaurants", categories: categories)
+        loadBusinessesWithFilters(filters)
     }
     
     func loadBusinesses(searchTerm: String) {
         // Display a loading state
         MBProgressHUD.showHUDAddedTo(self.view, animated: true)
         
-        Business.searchWithTerm(searchTerm, sort: .Distance, categories: nil, deals: nil) {
+        Business.searchWithTerm(searchTerm, sort: .Distance, categories: nil, deals: nil, radius: 0) {
             (businesses: [Business]!, error: NSError!) -> Void in
             self.businesses = businesses
             self.tableView.reloadData()
@@ -94,11 +92,22 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
         }
     }
     
-    func loadBusinesses(searchTerm: String, categories: [String]?) {
+    func loadBusinessesWithFilters(filters: [String : AnyObject]) {
+        let deals = filters["deals"] as! Bool
+        let sort = filters["sort"] as? Int
+        let radius = filters["radius"] as? Int
+        let categories = filters["categories"] as? [String]
+        
+        var yelpSort: YelpSortMode?
+        
+        if sort != nil {
+            yelpSort = YelpSortMode(rawValue: sort!)!
+        }
+        
         // Display a loading state
         MBProgressHUD.showHUDAddedTo(self.view, animated: true)
         
-        Business.searchWithTerm(searchTerm, sort: .Distance, categories: categories, deals: nil) {
+        Business.searchWithTerm("Restaurants", sort: yelpSort, categories: categories, deals: deals, radius: radius) {
             (businesses: [Business]!, error: NSError!) -> Void in
             self.businesses = businesses
             self.tableView.reloadData()
@@ -106,6 +115,7 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
             // Remove loading state
             MBProgressHUD.hideHUDForView(self.view, animated: true)
         }
+        
     }
     
 }
