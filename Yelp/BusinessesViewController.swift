@@ -26,6 +26,8 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
         let searchBar = UISearchBar()
         searchBar.delegate = self
         searchBar.sizeToFit()
+        searchBar.tintColor = UIColor(red: 196.0/255.0, green: 18.0/255.0, blue: 0.0/255.0, alpha: 1.0)
+        searchBar.barTintColor = UIColor(red: 196.0/255.0, green: 18.0/255.0, blue: 0.0/255.0, alpha: 1.0)
         searchBar.placeholder = "Restaurants"
         
         navigationItem.titleView = searchBar
