@@ -31,7 +31,7 @@ Time spent: 12
 
 ### Walkthrough
 
-![Video Walkthrough](...)
+![Video Walkthrough](ios_yelp.gif)
 
 ### Credits
 * [Yelp API](http://developer.rottentomatoes.com/docs/read/JSON)
