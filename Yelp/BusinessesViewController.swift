@@ -12,6 +12,11 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
     @IBOutlet weak var tableView: UITableView!
     
     var businesses: [Business]!
+    var yelpOffset = 0
+    var yelpSearchTerm = "Restaurants"
+    var yelpFilters = [String : AnyObject]()
+    var totalBusinesses = 0
+    var loading = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -30,7 +35,7 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
         tableView.rowHeight = UITableViewAutomaticDimension
         tableView.estimatedRowHeight = 120
         
-        loadBusinesses("Restaurants")
+        loadBusinesses(yelpSearchTerm, offset: yelpOffset, filters: yelpFilters)
     }
     
     override func didReceiveMemoryWarning() {
@@ -55,11 +60,21 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
         return cell
     }
     
+    func scrollViewDidScroll(scrollView: UIScrollView) {
+        if businesses != nil && !loading {
+            let currentOffset = scrollView.contentOffset.y
+            let maximumOffset = scrollView.contentSize.height - scrollView.frame.size.height
+            
+            if (maximumOffset - currentOffset) <= 40 {
+                if businesses.count < totalBusinesses {
+                    loadBusinesses(yelpSearchTerm, offset: (yelpOffset + 1), filters: yelpFilters)
+                }
+            }
+        }
+    }
+    
     func searchBarSearchButtonClicked(searchBar: UISearchBar) {
-        let searchText = searchBar.text!
-        
-        loadBusinesses(searchText)
-        
+        loadBusinesses(searchBar.text!, offset: 0, filters: yelpFilters)
         searchBar.endEditing(true)
     }
     
@@ -75,28 +90,23 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
     }
     
     func filtersViewController(filtersViewController: FiltersViewController, didUpdateFilters filters: [String : AnyObject]) {
-        loadBusinessesWithFilters(filters)
+        loadBusinesses(yelpSearchTerm, offset: 0, filters: filters)
     }
     
-    func loadBusinesses(searchTerm: String) {
-        // Display a loading state
-        MBProgressHUD.showHUDAddedTo(self.view, animated: true)
+    func loadBusinesses(searchTerm: String, offset: Int, filters: [String : AnyObject]?) {
+        yelpSearchTerm = searchTerm
+        yelpOffset = offset
         
-        Business.searchWithTerm(searchTerm, sort: .Distance, categories: nil, deals: nil, radius: 0) {
-            (businesses: [Business]!, error: NSError!) -> Void in
-            self.businesses = businesses
-            self.tableView.reloadData()
-            
-            // Remove loading state
-            MBProgressHUD.hideHUDForView(self.view, animated: true)
+        setLoadingState(true)
+        
+        if filters != nil {
+            yelpFilters = filters!
         }
-    }
-    
-    func loadBusinessesWithFilters(filters: [String : AnyObject]) {
-        let deals = filters["deals"] as! Bool
-        let sort = filters["sort"] as? Int
-        let radius = filters["radius"] as? Int
-        let categories = filters["categories"] as? [String]
+        
+        let deals = yelpFilters["deals"] as? Bool
+        let sort = yelpFilters["sort"] as? Int
+        let radius = yelpFilters["radius"] as? Int
+        let categories = yelpFilters["categories"] as? [String]
         
         var yelpSort: YelpSortMode?
         
@@ -104,18 +114,52 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
             yelpSort = YelpSortMode(rawValue: sort!)!
         }
         
-        // Display a loading state
-        MBProgressHUD.showHUDAddedTo(self.view, animated: true)
-        
-        Business.searchWithTerm("Restaurants", sort: yelpSort, categories: categories, deals: deals, radius: radius) {
-            (businesses: [Business]!, error: NSError!) -> Void in
-            self.businesses = businesses
+        Business.searchWithTerm(searchTerm, sort: yelpSort, categories: categories, deals: deals, radius: radius, offset: offset) {
+            (businesses: [Business]!, total: Int!, error: NSError!) -> Void in
+            
+            self.totalBusinesses = total
+            
+            if offset == 0 {
+                self.businesses = businesses
+            } else {
+                self.businesses.appendContentsOf(businesses)
+            }
+            
             self.tableView.reloadData()
             
+            if offset == 0 {
+                let indexPath = NSIndexPath(forRow: 0, inSection: 0)
+                self.tableView.scrollToRowAtIndexPath(indexPath, atScrollPosition: UITableViewScrollPosition.Top, animated: true)
+            }
+            
             // Remove loading state
-            MBProgressHUD.hideHUDForView(self.view, animated: true)
+            self.setLoadingState(false)
         }
+    }
+    
+    func setLoadingState(loading: Bool) {
+        self.loading = loading
         
+        // Display a loading state
+        if yelpOffset > 0 {
+            if loading {
+                // Set footer loading spinner
+                let spinner: UIActivityIndicatorView = UIActivityIndicatorView(activityIndicatorStyle: UIActivityIndicatorViewStyle.Gray)
+                spinner.startAnimating()
+                spinner.color = UIColor(red: 22.0/255.0, green: 106.0/255.0, blue: 176.0/255.0, alpha: 1.0) // Spinner Colour
+                spinner.frame = CGRectMake(0, 0, 320, 44)
+                tableView.tableFooterView = spinner
+            } else {
+                tableView.tableFooterView = nil
+            }
+        } else {
+            if loading {
+                MBProgressHUD.showHUDAddedTo(self.view, animated: true)
+            } else {
+                MBProgressHUD.hideHUDForView(self.view, animated: true)
+            }
+            
+        }
     }
     
 }
